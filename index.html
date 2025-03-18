@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UML Card Diagram Editor</title>
+    <style>
+        :root {
+            /* Light theme (default) */
+            --bg-color: #f5f5f5;
+            --card-bg: white;
+            --text-color: #333;
+            --border-color: #ccc;
+            --header-bg: #e9f0fd;
+            --btn-primary: #4285f4;
+            --btn-hover: #356ac3;
+            --btn-text: white;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --line-color: #555;
+            --status-bg: #eee;
+        }
+        
+        [data-theme="dark"] {
+            /* Dark theme */
+            --bg-color: #1e1e1e;
+            --card-bg: #2d2d2d;
+            --text-color: #e0e0e0;
+            --border-color: #555;
+            --header-bg: #3a3a3a;
+            --btn-primary: #5c95f5;
+            --btn-hover: #4285f4;
+            --btn-text: white;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --line-color: #bbb;
+            --status-bg: #333;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .title-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .github-link {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--text-color);
+            font-size: 14px;
+            transition: color 0.2s ease;
+            gap: 5px;
+        }
+        
+        .github-link:hover {
+            color: var(--btn-primary);
+        }
+        
+        .github-icon {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .tools {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 8px 12px;
+            background-color: var(--btn-primary);
+            color: var(--btn-text);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background-color: var(--btn-hover);
+        }
+        
+        .zoom-controls {
+            display: flex;
+            gap: 5px;
+            margin-left: 10px;
+        }
+        
+        .zoom-controls button {
+            width: 35px;
+            height: 35px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #reset-view-btn {
+            font-size: 12px;
+            width: auto;
+        }
+        
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            margin-left: 15px;
+        }
+        
+        #theme-btn {
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 20px;
+            overflow: hidden;
+        }
+        
+        .card-editor {
+            width: 30%;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .edges-container {
+            margin-top: 10px;
+        }
+        
+        .edge-item {
+            display: flex;
+            margin-bottom: 5px;
+        }
+        
+        .edge-item input {
+            flex: 1;
+            margin-right: 5px;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #diagram-canvas {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            cursor: default;
+            /* Removing grid background */
+            background-size: 20px 20px;
+            transform-origin: 0 0;
+            transition: transform 0.1s ease;
+        }
+        
+        .card {
+            position: absolute;
+            width: 280px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: 0 2px 8px var(--shadow-color);
+            cursor: move;
+            user-select: none;
+            z-index: 1;
+        }
+        
+        .card-header {
+            padding: 10px;
+            background-color: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .card-content {
+            padding: 10px;
+        }
+        
+        .card-region {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 5px;
+        }
+        
+        .card-edges-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 5px;
+            margin-bottom: 3px;
+        }
+        
+        .card-edges {
+            font-size: 12px;
+            color: var(--text-color);
+            margin-left: 10px;
+        }
+        
+        .card-edge-item {
+            margin-bottom: 3px;
+        }
+        
+        .card-description {
+            margin-top: 10px;
+            font-size: 12px;
+            white-space: pre-wrap;
+            border-top: 1px solid #eee;
+            padding-top: 5px;
+        }
+        
+        .card-controls {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .card-controls button {
+            padding: 2px 4px;
+            font-size: 10px;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        
+        .card-selected {
+            border: 2px solid var(--btn-primary);
+        }
+        
+        .connection-point {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: var(--btn-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 2;
+            opacity: 0.7;
+            transition: all 0.2s ease;
+        }
+        
+        .connection-point:hover {
+            transform: scale(1.5) !important;
+            opacity: 1;
+            box-shadow: 0 0 5px rgba(66, 133, 244, 0.8);
+        }
+        
+        .highlight-connection-point {
+            animation: pulse 1.5s infinite;
+            opacity: 0.9;
+        }
+        
+        .active-connection-target {
+            transform: scale(1.8) !important;
+            opacity: 1;
+            background-color: #34a853; /* Google green */
+            box-shadow: 0 0 8px rgba(52, 168, 83, 0.8);
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+        }
+        
+        .connecting-line {
+            stroke: var(--line-color);
+            stroke-width: 2px;
+            fill: none;
+            pointer-events: all;
+            cursor: pointer;
+        }
+        
+        .temp-connecting-line {
+            stroke: var(--btn-primary);
+            stroke-width: 2px;
+            stroke-dasharray: 5,5;
+            fill: none;
+            pointer-events: none;
+        }
+        
+        .connection-selected {
+            stroke: var(--btn-primary);
+            stroke-width: 3px;
+        }
+        
+        .line-controls {
+            position: absolute;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 3;
+            box-shadow: 0 3px 8px var(--shadow-color);
+            min-width: 200px;
+        }
+        
+        .line-info {
+            font-size: 12px;
+            color: var(--text-color);
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        
+        .line-controls button {
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        
+        .line-controls #delete-line-btn {
+            background-color: #ea4335; /* Google red */
+        }
+        
+        .line-controls #cancel-btn {
+            background-color: #9aa0a6; /* Gray */
+        }
+        
+        .status-bar {
+            padding: 10px;
+            background-color: var(--status-bg);
+            margin-top: 20px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        /* Add tooltip style */
+        [title]:hover:after {
+            content: attr(title);
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 10;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title-container">
+            <h1>UML Card Diagram Editor</h1>
+            <a href="https://github.com/guyycodes/UML_diagraming_tool" class="github-link" target="_blank" rel="noopener noreferrer">
+                <svg class="github-icon" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+                guyycode/UML_diagraming_tool
+            </a>
+        </div>
+        <div class="tools">
+            <button id="new-card-btn">New Card</button>
+            <button id="save-btn">Save Diagram</button>
+            <button id="load-btn">Load Diagram</button>
+            <button id="clear-btn">Clear Canvas</button>
+            <div class="zoom-controls">
+                <button id="zoom-in-btn" title="Zoom In">+</button>
+                <button id="zoom-out-btn" title="Zoom Out">-</button>
+                <button id="reset-view-btn" title="Reset View">Reset</button>
+            </div>
+            <div class="theme-toggle">
+                <button id="theme-btn" title="Toggle Theme">🌓</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="card-editor">
+            <h2>Card Editor</h2>
+            <div class="form-group">
+                <label for="card-name">Name:</label>
+                <input type="text" id="card-name" placeholder="Card Name">
+            </div>
+            <div class="form-group">
+                <label for="card-region">Region:</label>
+                <input type="text" id="card-region" placeholder="Region">
+            </div>
+            <div class="form-group">
+                <label for="card-edges">Edges (one per line):</label>
+                <div id="edges-list" class="edges-container">
+                    <div class="edge-item">
+                        <input type="text" class="edge-input" placeholder="Edge connection">
+                        <button class="remove-edge-btn">-</button>
+                    </div>
+                </div>
+                <button id="add-edge-btn">Add Edge</button>
+            </div>
+            <div class="form-group">
+                <label for="card-description">Description:</label>
+                <textarea id="card-description" placeholder="Brief description"></textarea>
+            </div>
+            <button id="create-card-btn">Create Card</button>
+            <button id="update-card-btn" style="display: none;">Update Card</button>
+        </div>
+        
+        <div class="canvas-container">
+            <svg id="diagram-canvas" xmlns="http://www.w3.org/2000/svg">
+                <!-- Lines and connections will be drawn here -->
+                <g id="lines-container"></g>
+                <g id="temp-line-container"></g>
+            </svg>
+            <!-- Cards will be appended here -->
+        </div>
+    </div>
+    
+    <div class="status-bar" id="status-bar">Ready</div>
+    
+    <script>
+        // Global state
+        const state = {
+            cards: [],
+            connections: [],
+            nextCardId: 1,
+            nextConnectionId: 1,
+            selectedCardId: null,
+            selectedConnectionId: null,
+            isConnecting: false,
+            connectingFromCard: null,
+            connectingFromPoint: null,
+            tempLinePoints: null,
+            isDragging: false,
+            dragOffset: { x: 0, y: 0 },
+            // Zoom and pan state
+            zoomLevel: 1,
+            panOffset: { x: 0, y: 0 },
+            isPanning: false,
+            lastPanPoint: { x: 0, y: 0 },
+            // Theme state
+            isDarkTheme: false
+        };
+        
+        // DOM Elements
+        const diagramCanvas = document.getElementById('diagram-canvas');
+        const canvasContainer = document.querySelector('.canvas-container');
+        const linesContainer = document.getElementById('lines-container');
+        const tempLineContainer = document.getElementById('temp-line-container');
+        const statusBar = document.getElementById('status-bar');
+        
+        // Form Elements
+        const cardNameInput = document.getElementById('card-name');
+        const cardRegionInput = document.getElementById('card-region');
+        const cardDescriptionInput = document.getElementById('card-description');
+        const edgesList = document.getElementById('edges-list');
+        const createCardBtn = document.getElementById('create-card-btn');
+        const updateCardBtn = document.getElementById('update-card-btn');
+        const newCardBtn = document.getElementById('new-card-btn');
+        const addEdgeBtn = document.getElementById('add-edge-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const loadBtn = document.getElementById('load-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        
+        // Utility functions
+        function setStatus(message) {
+            statusBar.textContent = message;
+        }
+        
+        function getEdges() {
+            const edges = [];
+            const edgeInputs = document.querySelectorAll('.edge-input');
+            edgeInputs.forEach(input => {
+                if (input.value.trim()) {
+                    edges.push(input.value.trim());
+                }
+            });
+            return edges;
+        }
+        
+        function clearCardForm() {
+            cardNameInput.value = '';
+            cardRegionInput.value = '';
+            cardDescriptionInput.value = '';
+            
+            // Clear all edge inputs except the first one
+            const edgeInputs = document.querySelectorAll('.edge-item');
+            edgeInputs.forEach((item, index) => {
+                if (index === 0) {
+                    item.querySelector('.edge-input').value = '';
+                } else {
+                    item.remove();
+                }
+            });
+            
+            createCardBtn.style.display = 'block';
+            updateCardBtn.style.display = 'none';
+            state.selectedCardId = null;
+            
+            deselectAllCards();
+        }
+        
+        function populateCardForm(card) {
+            cardNameInput.value = card.name;
+            cardRegionInput.value = card.region;
+            cardDescriptionInput.value = card.description;
+            
+            // Clear existing edges
+            edgesList.innerHTML = '';
+            
+            // Add edges
+            card.edges.forEach((edge, index) => {
+                const edgeItem = document.createElement('div');
+                edgeItem.className = 'edge-item';
+                edgeItem.innerHTML = `
+                    <input type="text" class="edge-input" value="${edge}">
+                    <button class="remove-edge-btn">-</button>
+                `;
+                edgesList.appendChild(edgeItem);
+                
+                // Add event listener to remove button
+                edgeItem.querySelector('.remove-edge-btn').addEventListener('click', function() {
+                    this.parentElement.remove();
+                });
+            });
+            
+            // If no edges were added, add one empty edge
+            if (card.edges.length === 0) {
+                addEdge();
+            }
+            
+            createCardBtn.style.display = 'none';
+            updateCardBtn.style.display = 'block';
+        }
+        
+        function addEdge() {
+            const edgeItem = document.createElement('div');
+            edgeItem.className = 'edge-item';
+            edgeItem.innerHTML = `
+                <input type="text" class="edge-input" placeholder="Edge connection">
+                <button class="remove-edge-btn">-</button>
+            `;
+            edgesList.appendChild(edgeItem);
+            
+            // Add event listener to remove button
+            edgeItem.querySelector('.remove-edge-btn').addEventListener('click', function() {
+                this.parentElement.remove();
+            });
+        }
+        
+        function createCard(name, region, edges, description, x = 100, y = 100) {
+            const cardId = `card-${state.nextCardId++}`;
+            
+            const card = {
+                id: cardId,
+                name: name,
+                region: region,
+                edges: edges,
+                description: description,
+                x: x,
+                y: y
+            };
+            
+            state.cards.push(card);
+            renderCard(card);
+            
+            return card;
+        }
+        
+        function renderCard(card) {
+            const cardElement = document.createElement('div');
+            cardElement.className = 'card';
+            cardElement.id = card.id;
+            cardElement.style.left = `${card.x}px`;
+            cardElement.style.top = `${card.y}px`;
+            
+            // Apply current zoom and pan
+            const transform = `translate(${state.panOffset.x}px, ${state.panOffset.y}px) scale(${state.zoomLevel})`;
+            cardElement.style.transform = transform;
+            cardElement.style.transformOrigin = '0 0';
+            
+            cardElement.innerHTML = `
+                <div class="card-header">
+                    <span>${card.name}</span>
+                    <div class="card-controls">
+                        <button class="edit-card-btn">Edit</button>
+                        <button class="delete-card-btn">Delete</button>
+                        <button class="connect-btn">Connect</button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="card-region">Region: ${card.region}</div>
+                    ${card.edges.length > 0 ? `
+                        <div class="card-edges-title">Edges:</div>
+                        <div class="card-edges">
+                            ${card.edges.map(edge => `<div class="card-edge-item">- ${edge}</div>`).join('')}
+                        </div>
+                    ` : ''}
+                    ${card.description ? `
+                        <div class="card-description">${card.description}</div>
+                    ` : ''}
+                </div>
+            `;
+            
+            canvasContainer.appendChild(cardElement);
+            
+            // Add connection points
+            addConnectionPoints(cardElement);
+            
+            // Add event listeners
+            setupCardEvents(cardElement);
+        }
+        
+        function addConnectionPoints(cardElement) {
+            // Center top
+            const topPoint = document.createElement('div');
+            topPoint.className = 'connection-point';
+            topPoint.dataset.position = 'top';
+            topPoint.style.left = '50%';
+            topPoint.style.top = '0';
+            topPoint.style.transform = 'translate(-50%, -50%)';
+            cardElement.appendChild(topPoint);
+            
+            // Center right
+            const rightPoint = document.createElement('div');
+            rightPoint.className = 'connection-point';
+            rightPoint.dataset.position = 'right';
+            rightPoint.style.right = '0';
+            rightPoint.style.top = '50%';
+            rightPoint.style.transform = 'translate(50%, -50%)';
+            cardElement.appendChild(rightPoint);
+            
+            // Center bottom
+            const bottomPoint = document.createElement('div');
+            bottomPoint.className = 'connection-point';
+            bottomPoint.dataset.position = 'bottom';
+            bottomPoint.style.left = '50%';
+            bottomPoint.style.bottom = '0';
+            bottomPoint.style.transform = 'translate(-50%, 50%)';
+            cardElement.appendChild(bottomPoint);
+            
+            // Center left
+            const leftPoint = document.createElement('div');
+            leftPoint.className = 'connection-point';
+            leftPoint.dataset.position = 'left';
+            leftPoint.style.left = '0';
+            leftPoint.style.top = '50%';
+            leftPoint.style.transform = 'translate(-50%, -50%)';
+            cardElement.appendChild(leftPoint);
+            
+            // Add event listeners to connection points
+            setupConnectionPointEvents(cardElement);
+        }
+        
+        function setupConnectionPointEvents(cardElement) {
+            const connectionPoints = cardElement.querySelectorAll('.connection-point');
+            
+            connectionPoints.forEach(point => {
+                // Add tooltip for each connection point
+                point.setAttribute('title', 'Click to connect cards');
+                
+                point.addEventListener('mousedown', function(e) {
+                    e.stopPropagation();
+                    
+                    if (state.isConnecting) {
+                        // Finishing a connection
+                        const fromCardId = state.connectingFromCard;
+                        const fromPosition = state.connectingFromPoint;
+                        const toCardId = cardElement.id;
+                        const toPosition = this.dataset.position;
+                        
+                        // Make sure we're not connecting to the same card
+                        if (fromCardId !== toCardId) {
+                            createConnection(fromCardId, fromPosition, toCardId, toPosition);
+                            setStatus(`Connected ${fromCardId} to ${toCardId}`);
+                        } else {
+                            setStatus("Cannot connect a card to itself");
+                        }
+                        
+                        // Reset connecting state
+                        state.isConnecting = false;
+                        state.connectingFromCard = null;
+                        state.connectingFromPoint = null;
+                        tempLineContainer.innerHTML = '';
+                    } else {
+                        // Starting a connection
+                        state.isConnecting = true;
+                        state.connectingFromCard = cardElement.id;
+                        state.connectingFromPoint = this.dataset.position;
+                        
+                        // Get starting position
+                        const rect = this.getBoundingClientRect();
+                        const canvasRect = diagramCanvas.getBoundingClientRect();
+                        
+                        const startX = rect.left + rect.width / 2 - canvasRect.left;
+                        const startY = rect.top + rect.height / 2 - canvasRect.top;
+                        
+                        state.tempLinePoints = {
+                            x1: startX,
+                            y1: startY,
+                            x2: startX,
+                            y2: startY
+                        };
+                        
+                        // Draw temporary line
+                        updateTempLine();
+                        
+                        setStatus("Connect to another card's connection point");
+                        
+                        // Highlight all connection points on other cards
+                        document.querySelectorAll('.card').forEach(card => {
+                            if (card.id !== cardElement.id) {
+                                card.querySelectorAll('.connection-point').forEach(p => {
+                                    p.classList.add('highlight-connection-point');
+                                });
+                            }
+                        });
+                    }
+                });
+                
+                // Highlight connection point on hover when connecting
+                point.addEventListener('mouseover', function() {
+                    if (state.isConnecting && cardElement.id !== state.connectingFromCard) {
+                        this.classList.add('active-connection-target');
+                    }
+                });
+                
+                point.addEventListener('mouseout', function() {
+                    this.classList.remove('active-connection-target');
+                });
+            });
+        }
+        
+        function setupCardEvents(cardElement) {
+            // Make card draggable
+            cardElement.addEventListener('mousedown', function(e) {
+                if (e.target.closest('.connection-point') || 
+                    e.target.closest('button')) {
+                    return; // Don't start dragging when clicking on connection points or buttons
+                }
+                
+                state.isDragging = true;
+                state.selectedCardId = this.id;
+                
+                deselectAllCards();
+                this.classList.add('card-selected');
+                
+                const rect = this.getBoundingClientRect();
+                state.dragOffset = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                
+                this.style.zIndex = 10; // Bring to front while dragging
+            });
+            
+            // Edit button
+            cardElement.querySelector('.edit-card-btn').addEventListener('click', function() {
+                const cardId = cardElement.id;
+                const card = state.cards.find(c => c.id === cardId);
+                
+                if (card) {
+                    state.selectedCardId = cardId;
+                    deselectAllCards();
+                    cardElement.classList.add('card-selected');
+                    populateCardForm(card);
+                }
+            });
+            
+            // Delete button
+            cardElement.querySelector('.delete-card-btn').addEventListener('click', function() {
+                const cardId = cardElement.id;
+                
+                // Remove connections involving this card
+                state.connections = state.connections.filter(conn => {
+                    if (conn.fromCard === cardId || conn.toCard === cardId) {
+                        const connElement = document.getElementById(conn.id);
+                        if (connElement) {
+                            connElement.remove();
+                        }
+                        return false;
+                    }
+                    return true;
+                });
+                
+                // Remove card from state
+                state.cards = state.cards.filter(c => c.id !== cardId);
+                
+                // Remove card element
+                cardElement.remove();
+                
+                // Clear form if this card was being edited
+                if (state.selectedCardId === cardId) {
+                    clearCardForm();
+                }
+                
+                setStatus(`Deleted card ${cardId}`);
+            });
+            
+            // Connect button
+            cardElement.querySelector('.connect-btn').addEventListener('click', function() {
+                const cardId = cardElement.id;
+                
+                if (state.isConnecting) {
+                    state.isConnecting = false;
+                    state.connectingFromCard = null;
+                    state.connectingFromPoint = null;
+                    tempLineContainer.innerHTML = '';
+                    setStatus("Connection canceled");
+                } else {
+                    state.isConnecting = true;
+                    state.connectingFromCard = cardId;
+                    state.connectingFromPoint = 'right'; // Default to right side
+                    
+                    // Get starting position from right connection point
+                    const pointElement = cardElement.querySelector('.connection-point[data-position="right"]');
+                    const rect = pointElement.getBoundingClientRect();
+                    const canvasRect = diagramCanvas.getBoundingClientRect();
+                    
+                    const startX = rect.left + rect.width / 2 - canvasRect.left;
+                    const startY = rect.top + rect.height / 2 - canvasRect.top;
+                    
+                    state.tempLinePoints = {
+                        x1: startX,
+                        y1: startY,
+                        x2: startX,
+                        y2: startY
+                    };
+                    
+                    // Draw temporary line
+                    updateTempLine();
+                    
+                    setStatus("Connect to another card's connection point");
+                }
+            });
+        }
+        
+        function deselectAllCards() {
+            document.querySelectorAll('.card').forEach(card => {
+                card.classList.remove('card-selected');
+                card.style.zIndex = 1;
+            });
+        }
+        
+        function createConnection(fromCardId, fromPosition, toCardId, toPosition) {
+            const connectionId = `connection-${state.nextConnectionId++}`;
+            
+            const connection = {
+                id: connectionId,
+                fromCard: fromCardId,
+                fromPosition: fromPosition,
+                toCard: toCardId,
+                toPosition: toPosition
+            };
+            
+            state.connections.push(connection);
+            drawConnection(connection);
+            
+            return connection;
+        }
+        
+        function drawConnection(connection) {
+            // Get positions of connection points
+            const fromCard = document.getElementById(connection.fromCard);
+            const toCard = document.getElementById(connection.toCard);
+            
+            if (!fromCard || !toCard) return;
+            
+            const fromPoint = fromCard.querySelector(`.connection-point[data-position="${connection.fromPosition}"]`);
+            const toPoint = toCard.querySelector(`.connection-point[data-position="${connection.toPosition}"]`);
+            
+            const fromRect = fromPoint.getBoundingClientRect();
+            const toRect = toPoint.getBoundingClientRect();
+            const canvasRect = diagramCanvas.getBoundingClientRect();
+            
+            // Calculate points in SVG coordinate space considering zoom and pan
+            const x1 = (fromRect.left + fromRect.width / 2 - canvasRect.left) / state.zoomLevel - state.panOffset.x / state.zoomLevel;
+            const y1 = (fromRect.top + fromRect.height / 2 - canvasRect.top) / state.zoomLevel - state.panOffset.y / state.zoomLevel;
+            const x2 = (toRect.left + toRect.width / 2 - canvasRect.left) / state.zoomLevel - state.panOffset.x / state.zoomLevel;
+            const y2 = (toRect.top + toRect.height / 2 - canvasRect.top) / state.zoomLevel - state.panOffset.y / state.zoomLevel;
+            
+            // Create path
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.id = connection.id;
+            path.classList.add('connecting-line');
+            
+            // Create a curved path
+            const dx = Math.abs(x2 - x1) / 2;
+            const dy = Math.abs(y2 - y1) / 2;
+            let controlX1 = x1;
+            let controlY1 = y1;
+            let controlX2 = x2;
+            let controlY2 = y2;
+            
+            // Adjust control points based on connection positions
+            if (connection.fromPosition === 'right') {
+                controlX1 = x1 + dx;
+            } else if (connection.fromPosition === 'left') {
+                controlX1 = x1 - dx;
+            } else if (connection.fromPosition === 'bottom') {
+                controlY1 = y1 + dy;
+            } else if (connection.fromPosition === 'top') {
+                controlY1 = y1 - dy;
+            }
+            
+            if (connection.toPosition === 'right') {
+                controlX2 = x2 + dx;
+            } else if (connection.toPosition === 'left') {
+                controlX2 = x2 - dx;
+            } else if (connection.toPosition === 'bottom') {
+                controlY2 = y2 + dy;
+            } else if (connection.toPosition === 'top') {
+                controlY2 = y2 - dy;
+            }
+            
+            path.setAttribute('d', `M ${x1} ${y1} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${x2} ${y2}`);
+            
+            linesContainer.appendChild(path);
+            
+            // Add tooltip for user guidance
+            path.setAttribute('title', 'Double-click to edit, right-click to delete');
+            
+            // Double-click to edit or right-click to delete connections
+            path.addEventListener('dblclick', function() {
+                editConnection(connection);
+            });
+            
+            path.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                deleteConnection(connection.id);
+            });
+            
+            // Add click handler for a more user-friendly way to select/delete
+            path.addEventListener('click', function(e) {
+                e.stopPropagation();
+                
+                // First, remove any selected styles from other paths
+                document.querySelectorAll('.connecting-line').forEach(p => {
+                    p.classList.remove('connection-selected');
+                });
+                
+                // Add selected style to this path
+                path.classList.add('connection-selected');
+                
+                // Show edit controls
+                editConnection(connection);
+            });
+        }
+        
+        function updateTempLine() {
+            if (!state.isConnecting || !state.tempLinePoints) return;
+            
+            tempLineContainer.innerHTML = '';
+            
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.classList.add('temp-connecting-line');
+            
+            // Adjust points for zoom and pan
+            const x1 = state.tempLinePoints.x1 / state.zoomLevel - state.panOffset.x / state.zoomLevel;
+            const y1 = state.tempLinePoints.y1 / state.zoomLevel - state.panOffset.y / state.zoomLevel;
+            const x2 = state.tempLinePoints.x2 / state.zoomLevel - state.panOffset.x / state.zoomLevel;
+            const y2 = state.tempLinePoints.y2 / state.zoomLevel - state.panOffset.y / state.zoomLevel;
+            
+            // Create a curved path
+            const dx = Math.abs(x2 - x1) / 2;
+            const dy = Math.abs(y2 - y1) / 2;
+            let controlX1 = x1;
+            let controlY1 = y1;
+            let controlX2 = x2;
+            let controlY2 = y2;
+            
+            // Adjust control points based on the connection source position
+            if (state.connectingFromPoint === 'right') {
+                controlX1 = x1 + dx;
+            } else if (state.connectingFromPoint === 'left') {
+                controlX1 = x1 - dx;
+            } else if (state.connectingFromPoint === 'bottom') {
+                controlY1 = y1 + dy;
+            } else if (state.connectingFromPoint === 'top') {
+                controlY1 = y1 - dy;
+            }
+            
+            controlX2 = x2;
+            controlY2 = y2;
+            
+            path.setAttribute('d', `M ${x1} ${y1} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${x2} ${y2}`);
+            
+            tempLineContainer.appendChild(path);
+        }
+        
+        function updateConnections() {
+            state.connections.forEach(connection => {
+                const connectionElement = document.getElementById(connection.id);
+                if (connectionElement) {
+                    connectionElement.remove();
+                }
+                drawConnection(connection);
+            });
+        }
+        
+        function deleteConnection(connectionId) {
+            state.connections = state.connections.filter(conn => conn.id !== connectionId);
+            
+            const connectionElement = document.getElementById(connectionId);
+            if (connectionElement) {
+                connectionElement.remove();
+            }
+            
+            setStatus(`Deleted connection ${connectionId}`);
+        }
+        
+        function editConnection(connection) {
+            // Remove any existing controls
+            const existingControls = document.getElementById('line-controls');
+            if (existingControls) {
+                existingControls.remove();
+            }
+            
+            const lineControls = document.createElement('div');
+            lineControls.className = 'line-controls';
+            lineControls.id = 'line-controls';
+            
+            // Position the controls near the middle of the line
+            const fromCard = document.getElementById(connection.fromCard);
+            const toCard = document.getElementById(connection.toCard);
+            
+            if (!fromCard || !toCard) return;
+            
+            const fromRect = fromCard.getBoundingClientRect();
+            const toRect = toCard.getBoundingClientRect();
+            
+            // Calculate position with zoom and pan
+            const midX = (fromRect.left + toRect.left) / 2;
+            const midY = (fromRect.top + toRect.top) / 2;
+            const canvasRect = canvasContainer.getBoundingClientRect();
+            
+            lineControls.style.left = `${midX - canvasRect.left}px`;
+            lineControls.style.top = `${midY - canvasRect.top}px`;
+            
+            const fromCardName = state.cards.find(c => c.id === connection.fromCard)?.name || 'Card';
+            const toCardName = state.cards.find(c => c.id === connection.toCard)?.name || 'Card';
+            
+            lineControls.innerHTML = `
+                <div class="line-info">Connection: ${fromCardName} → ${toCardName}</div>
+                <button id="delete-line-btn">Delete Connection</button>
+                <button id="cancel-btn">Cancel</button>
+            `;
+            
+            canvasContainer.appendChild(lineControls);
+            
+            document.getElementById('delete-line-btn').addEventListener('click', function() {
+                deleteConnection(connection.id);
+                lineControls.remove();
+            });
+            
+            document.getElementById('cancel-btn').addEventListener('click', function() {
+                lineControls.remove();
+                
+                // Deselect the connection
+                const connectionElement = document.getElementById(connection.id);
+                if (connectionElement) {
+                    connectionElement.classList.remove('connection-selected');
+                }
+            });
+        }
+        
+        function updateCardPosition(cardId, x, y) {
+            const card = state.cards.find(c => c.id === cardId);
+            if (card) {
+                card.x = x;
+                card.y = y;
+            }
+        }
+        
+        function saveUserExample() {
+            createCard(
+                "Index",
+                "Entrypoint",
+                [
+                    "Context/Controller (useSequencer)",
+                    "theme/typography (customFontsToLoad)",
+                    "SplashScreen API",
+                    "(splash) route"
+                ],
+                "Serves as the app's initial entry point that manages font loading, displays the splash screen for 3 seconds, and redirects to the splash route when ready. Controls tab navigator visibility during startup.",
+                100,
+                100
+            );
+        }
+        
+        // Event Listeners
+        document.addEventListener('mousemove', function(e) {
+            if (state.isDragging && state.selectedCardId) {
+                const card = document.getElementById(state.selectedCardId);
+                if (card) {
+                    const canvasRect = canvasContainer.getBoundingClientRect();
+                    const newX = e.clientX - canvasRect.left - state.dragOffset.x;
+                    const newY = e.clientY - canvasRect.top - state.dragOffset.y;
+                    
+                    // Keep card within boundaries
+                    const boundedX = Math.max(0, Math.min(newX, canvasRect.width - card.offsetWidth));
+                    const boundedY = Math.max(0, Math.min(newY, canvasRect.height - card.offsetHeight));
+                    
+                    card.style.left = `${boundedX}px`;
+                    card.style.top = `${boundedY}px`;
+                    
+                    updateCardPosition(state.selectedCardId, boundedX, boundedY);
+                    updateConnections();
+                }
+            }
+            
+            if (state.isConnecting && state.tempLinePoints) {
+                // Update temp line end point to cursor position
+                const canvasRect = diagramCanvas.getBoundingClientRect();
+                state.tempLinePoints.x2 = e.clientX - canvasRect.left;
+                state.tempLinePoints.y2 = e.clientY - canvasRect.top;
+                updateTempLine();
+            }
+            
+            // Handle panning
+            if (state.isPanning) {
+                updatePan(e);
+            }
+        });
+        
+        document.addEventListener('mouseup', function(e) {
+            if (state.isDragging) {
+                const card = document.getElementById(state.selectedCardId);
+                if (card) {
+                    card.style.zIndex = 1;
+                }
+                
+                state.isDragging = false;
+            }
+            
+            // End panning
+            if (state.isPanning) {
+                endPan();
+            }
+        });
+        
+        // Add touch move and end events for mobile panning
+        document.addEventListener('touchmove', function(e) {
+            if (state.isPanning && e.touches.length === 2) {
+                const touch = e.touches[0];
+                updatePan({ clientX: touch.clientX, clientY: touch.clientY });
+            }
+        });
+        
+        document.addEventListener('touchend', function() {
+            if (state.isPanning) {
+                endPan();
+            }
+        });
+        
+        diagramCanvas.addEventListener('click', function(e) {
+            if (state.isConnecting) {
+                // Cancel connecting if clicking on empty canvas
+                state.isConnecting = false;
+                state.connectingFromCard = null;
+                state.connectingFromPoint = null;
+                tempLineContainer.innerHTML = '';
+                setStatus("Connection canceled");
+                
+                // Remove highlight from all connection points
+                document.querySelectorAll('.highlight-connection-point').forEach(point => {
+                    point.classList.remove('highlight-connection-point');
+                });
+            }
+            
+            // Remove line controls if clicking anywhere else
+            const lineControls = document.getElementById('line-controls');
+            if (lineControls) {
+                lineControls.remove();
+            }
+        });
+        
+        createCardBtn.addEventListener('click', function() {
+            const name = cardNameInput.value.trim();
+            const region = cardRegionInput.value.trim();
+            const edges = getEdges();
+            const description = cardDescriptionInput.value.trim();
+            
+            if (!name) {
+                setStatus("Card name is required");
+                return;
+            }
+            
+            const card = createCard(name, region, edges, description);
+            setStatus(`Created card: ${card.name}`);
+            clearCardForm();
+        });
+        
+        updateCardBtn.addEventListener('click', function() {
+            if (!state.selectedCardId) {
+                setStatus("No card selected");
+                return;
+            }
+            
+            const name = cardNameInput.value.trim();
+            const region = cardRegionInput.value.trim();
+            const edges = getEdges();
+            const description = cardDescriptionInput.value.trim();
+            
+            if (!name) {
+                setStatus("Card name is required");
+                return;
+            }
+            
+            const card = state.cards.find(c => c.id === state.selectedCardId);
+            if (card) {
+                card.name = name;
+                card.region = region;
+                card.edges = edges;
+                card.description = description;
+                
+                // Update card element
+                const cardElement = document.getElementById(card.id);
+                if (cardElement) {
+                    cardElement.remove();
+                    renderCard(card);
+                }
+                
+                setStatus(`Updated card: ${card.name}`);
+                clearCardForm();
+            }
+        });
+        
+        newCardBtn.addEventListener('click', function() {
+            clearCardForm();
+            setStatus("Ready to create a new card");
+        });
+        
+        addEdgeBtn.addEventListener('click', function() {
+            addEdge();
+        });
+        
+        saveBtn.addEventListener('click', function() {
+            const data = {
+                cards: state.cards,
+                connections: state.connections,
+                nextCardId: state.nextCardId,
+                nextConnectionId: state.nextConnectionId
+            };
+            
+            const jsonString = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'uml-diagram.json';
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            
+            setStatus("Diagram saved");
+        });
+        
+        loadBtn.addEventListener('click', function() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        
+                        // Clear existing diagram
+                        clearDiagram();
+                        
+                        // Restore state
+                        state.nextCardId = data.nextCardId || 1;
+                        state.nextConnectionId = data.nextConnectionId || 1;
+                        
+                        // Render cards
+                        data.cards.forEach(card => {
+                            state.cards.push(card);
+                            renderCard(card);
+                        });
+                        
+                        // Render connections
+                        data.connections.forEach(conn => {
+                            state.connections.push(conn);
+                            drawConnection(conn);
+                        });
+                        
+                        setStatus("Diagram loaded");
+                    } catch (error) {
+                        setStatus("Error loading diagram: " + error.message);
+                    }
+                };
+                
+                reader.readAsText(file);
+            });
+            
+            input.click();
+        });
+        
+        clearBtn.addEventListener('click', function() {
+            if (confirm("Are you sure you want to clear the canvas? This will delete all cards and connections.")) {
+                clearDiagram();
+                setStatus("Canvas cleared");
+            }
+        });
+        
+        // Zoom and Pan Event Listeners
+        document.getElementById('zoom-in-btn').addEventListener('click', zoomIn);
+        document.getElementById('zoom-out-btn').addEventListener('click', zoomOut);
+        document.getElementById('reset-view-btn').addEventListener('click', resetView);
+        
+        // Pan with middle mouse button
+        diagramCanvas.addEventListener('mousedown', function(e) {
+            // Middle mouse button (button 1)
+            if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
+                e.preventDefault();
+                startPan(e);
+            }
+        });
+        
+        // Pan with touch events for mobile
+        diagramCanvas.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                startPan({ clientX: touch.clientX, clientY: touch.clientY });
+            }
+        });
+        
+        // Add wheel event for zooming
+        diagramCanvas.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                zoomIn();
+            } else {
+                zoomOut();
+            }
+        });
+        
+        function clearDiagram() {
+            // Remove all cards
+            document.querySelectorAll('.card').forEach(card => card.remove());
+            
+            // Clear lines
+            linesContainer.innerHTML = '';
+            tempLineContainer.innerHTML = '';
+            
+            // Reset state
+            state.cards = [];
+            state.connections = [];
+            state.nextCardId = 1;
+            state.nextConnectionId = 1;
+            state.selectedCardId = null;
+            state.isConnecting = false;
+            state.connectingFromCard = null;
+            state.tempLinePoints = null;
+            
+            clearCardForm();
+        }
+        
+        // Zoom and Pan Functions
+        function applyZoomAndPan() {
+            // Apply transformation to the SVG canvas
+            const transform = `translate(${state.panOffset.x}px, ${state.panOffset.y}px) scale(${state.zoomLevel})`;
+            diagramCanvas.style.transform = transform;
+            diagramCanvas.style.transformOrigin = '0 0';
+            
+            // Apply same transformation to all cards
+            document.querySelectorAll('.card').forEach(card => {
+                card.style.transform = transform;
+                card.style.transformOrigin = '0 0';
+            });
+            
+            // For connections, we need to redraw them instead of using transform 
+            // to ensure they stay connected to the card connection points
+            updateConnections();
+            
+            // Update status
+            setStatus(`Zoom: ${Math.round(state.zoomLevel * 100)}%, Pan: (${Math.round(state.panOffset.x)}, ${Math.round(state.panOffset.y)})`);
+        }
+        
+        function zoomIn() {
+            if (state.zoomLevel < 3) { // Max zoom limit
+                state.zoomLevel *= 1.2;
+                applyZoomAndPan();
+            }
+        }
+        
+        function zoomOut() {
+            if (state.zoomLevel > 0.3) { // Min zoom limit
+                state.zoomLevel /= 1.2;
+                applyZoomAndPan();
+            }
+        }
+        
+        function resetView() {
+            state.zoomLevel = 1;
+            state.panOffset = { x: 0, y: 0 };
+            applyZoomAndPan();
+        }
+        
+        function startPan(e) {
+            if (!state.isDragging && !state.isConnecting) {
+                state.isPanning = true;
+                state.lastPanPoint = { x: e.clientX, y: e.clientY };
+                diagramCanvas.style.cursor = 'grabbing';
+            }
+        }
+        
+        function updatePan(e) {
+            if (state.isPanning) {
+                const dx = e.clientX - state.lastPanPoint.x;
+                const dy = e.clientY - state.lastPanPoint.y;
+                
+                state.panOffset.x += dx;
+                state.panOffset.y += dy;
+                
+                state.lastPanPoint = { x: e.clientX, y: e.clientY };
+                
+                applyZoomAndPan();
+            }
+        }
+        
+        function endPan() {
+            state.isPanning = false;
+            diagramCanvas.style.cursor = 'default';
+        }
+        
+        // Add example data
+        function addExampleData() {
+            const card1 = createCard(
+                "User Authentication",
+                "Security",
+                ["Login Controller", "User Service"],
+                "Handles user authentication and session management",
+                100,
+                100
+            );
+            
+            const card2 = createCard(
+                "Dashboard",
+                "UI",
+                ["Analytics Service", "Chart Component"],
+                "Main dashboard view for the application",
+                400,
+                100
+            );
+            
+            const card3 = createCard(
+                "User Profile",
+                "User",
+                ["Profile Service", "Image Upload"],
+                "User profile management and settings",
+                100,
+                300
+            );
+            
+            // Add connections
+            createConnection(card1.id, 'right', card2.id, 'left');
+            createConnection(card1.id, 'bottom', card3.id, 'top');
+            createConnection(card2.id, 'bottom', card3.id, 'right');
+        }
+        
+        // Load example data
+        // Uncomment to load example data automatically:
+        // addExampleData();
+        
+        // Theme toggle functionality
+        const themeBtn = document.getElementById('theme-btn');
+        
+        function toggleTheme() {
+            state.isDarkTheme = !state.isDarkTheme;
+            document.documentElement.setAttribute('data-theme', state.isDarkTheme ? 'dark' : 'light');
+            localStorage.setItem('theme', state.isDarkTheme ? 'dark' : 'light');
+            setStatus(`Theme switched to ${state.isDarkTheme ? 'dark' : 'light'} mode`);
+        }
+        
+        themeBtn.addEventListener('click', toggleTheme);
+        
+        // Check for saved theme preference
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                state.isDarkTheme = savedTheme === 'dark';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        }
+        
+        // Initialize with an empty edge
+        addEdge();
+        
+        // Load saved theme
+        loadSavedTheme();
+        
+        // Set initial status
+        setStatus("Ready");
+    </script>
+</body>
+</html>
